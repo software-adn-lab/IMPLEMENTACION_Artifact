@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Code Details</title>
+    
+    <!-- External stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        main.wrap {
+            max-width: 90%; /* Make the main container wider */
+        }
+        .code-container {
+            margin: 20px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            overflow-x: auto;
+        }
+        pre {
+            margin: 0;
+        }
+        code {
+            font-family: "Courier New", Courier, monospace;
+            font-size: 14px;
+        }
+        .line-number {
+            display: inline-block;
+            width: 40px;
+            text-align: right;
+            margin-right: 15px;
+            color: #6c757d;
+            user-select: none;
+        }
+        .line-wrapper {
+            display: block; /* Ensure each line uses its own space */
+        }
+        .highlight {
+            background-color: #fff3cd;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>Code Details</header>
+
+    <!-- Main content -->
+    <main class="wrap">
+        <h1 id="fileName"></h1>
+        <div class="code-container">
+            <pre><code id="codeContent">Loading code...</code></pre>
+        </div>
+    </main>
+
+    <!-- External script -->
+    <script src="{{ url_for('static', filename='js/codeDetails.js') }}"></script>
+</body>
+</html>

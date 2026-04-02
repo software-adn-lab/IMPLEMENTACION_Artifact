@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <title>General Report</title>
+</head>
+
+<body>
+    <header>
+        Dashboard
+    </header>
+    <h1>Antipatterns</h1>
+
+    <div id="contenedorGeneralGraficos"></div>
+
+    <template id="grafico-card-template">
+        <div class="grafico grafico-interactivo" role="button" tabindex="0">
+            <svg class="grafico-svg" viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg" aria-label="">
+                <circle class="circulo-fondo" cx="120" cy="120" r="90"></circle>
+                <circle class="circulo-pintado" cx="120" cy="120" r="90" pathLength="1" stroke-dasharray="0 1"></circle>
+                <text x="50%" y="48%" class="valor-centro"></text>
+                <text x="50%" y="62%" class="subtexto-centro">met</text>
+            </svg>
+            <h2></h2>
+        </div>
+    </template>
+
+    <template id="pdf-export-template">
+        <div class="pdf-export-wrapper">
+            <div class="pdf-export-header">
+                <h1>Antipattern Analysis Report</h1>
+                <p>
+                    This report presents the automated antipattern and code smell analysis performed on project
+                    <strong class="pdf-project-name">PROJECT_NAME</strong> developed in
+                    <strong class="pdf-language">LANGUAGE</strong>. It summarizes findings, context, and key metrics to support technical review.
+                </p>
+            </div>
+
+            <section class="pdf-legend" aria-label="Color interpretation">
+                <h2>Color interpretation</h2>
+                <div class="pdf-legend-list">
+                    <div class="pdf-legend-item">
+                        <span class="pdf-legend-dot pdf-legend-dot-verde"></span>
+                        <span>No antipattern detected because fewer than half of the conditions are met (Moha Smells).</span>
+                    </div>
+                    <div class="pdf-legend-item">
+                        <span class="pdf-legend-dot pdf-legend-dot-amarillo"></span>
+                        <span>Antipattern likely present because at least half of the conditions are met (Moha Smells).</span>
+                    </div>
+                    <div class="pdf-legend-item">
+                        <span class="pdf-legend-dot pdf-legend-dot-rojo"></span>
+                        <span>Antipattern detected because all conditions are met (Moha Smells).</span>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </template>
+
+    <template id="pdf-traceability-empty-template">
+        <section class="pdf-traceability">
+            <h2>Code Smell Details and Traceability</h2>
+            <p class="pdf-traceability-empty">No code smell details were found to include in the report.</p>
+        </section>
+    </template>
+
+    <template id="pdf-traceability-table-template">
+        <section class="pdf-traceability">
+            <h2>Code Smell Details and Traceability</h2>
+            <table class="pdf-traceability-table">
+                <thead>
+                    <tr>
+                        <th>Antipattern</th>
+                        <th>MohaSmell</th>
+                        <th>Sonar Rule</th>
+                        <th>Line</th>
+                        <th>Severity</th>
+                        <th>Location</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </section>
+    </template>
+
+    <div class="export-pdf-wrap">
+        <button id="exportPdfBtn" class="export-pdf-btn">Export PDF</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/results.js') }}"></script>
+</body>
+
+</html>

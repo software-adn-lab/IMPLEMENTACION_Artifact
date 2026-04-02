@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+
+    <title>Individual Report</title>
+</head>
+
+<body>
+    <header>
+        Individual Report
+    </header>
+    <h1>Detailed Table</h1>
+    <div id="contenedorGeneralReporteIndividual">
+        <div id="contenedorIndividual">
+
+        </div>
+        
+        <table id="tabla-detalles">
+            <thead>
+                <tr>
+                    <th>Moha Smell</th>
+                    <th>Sonar Rule</th>
+                    <th>Line</th>
+                    <th>Severity</th>
+                    <th>Location</th>
+                </tr>
+            </thead>
+            <tbody id="cuerpo-tabla">
+            </tbody>
+        </table>
+
+    </div>
+
+
+
+
+    <script src="{{ url_for('static', filename='js/individualReport.js') }}"></script>
+
+</body>
+
+</html>

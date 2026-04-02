@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SonarQube Connection Check</title>
+    
+    <!-- External stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <!-- Header -->
+    <header>Connection Validator</header>
+
+    <!-- Main content -->
+    <main class="wrap">
+        <section class="card">
+            <h1>SonarQube Verification</h1>
+
+            <!-- Message box (initially hidden) -->
+            <div id="message" class="msg is-hidden"></div>
+
+            <!-- Form -->
+            <form id="connectionForm">
+
+                <!-- Toggle: Private repository -->
+                <div class="field toggle-field">
+                    <label class="toggle-label" for="isPrivate">
+                        <span>Private repository</span>
+                        <span class="toggle-track">
+                            <input type="checkbox" id="isPrivate" name="isPrivate">
+                            <span class="toggle-thumb"></span>
+                        </span>
+                    </label>
+                    <p class="toggle-hint" id="toggleHint">Public repository &mdash; only the project name is required</p>
+                </div>
+
+                <!-- Field: Project name -->
+                <div class="field">
+                    <label for="project_key">Project Name</label>
+                    <input 
+                        id="project_key" 
+                        name="project_key" 
+                        type="text" 
+                        placeholder="GitHubOwner_ProjectName" 
+                        required>
+                </div>
+
+                <!-- Field: Token (visible only for private repos) -->
+                <div class="field is-hidden" id="tokenField">
+                    <label for="token">Authorization Token</label>
+                    <input 
+                        id="token" 
+                        name="token" 
+                        type="password" 
+                        placeholder="Personal SonarQube token">
+                </div>
+
+                <!-- Field: Language -->
+                <div class="field">
+                    <label for="language">Project language</label>
+                    <select id="language" name="language">
+                        <option value="python" selected>Python</option>
+                    </select>
+                </div>
+
+                <!-- Button -->
+                <button type="submit">Verify project</button>
+            </form>
+        </section>
+    </main>
+
+    <!-- External script -->
+    <script src="{{ url_for('static', filename='js/index.js') }}"></script>
+</body>
+</html>
