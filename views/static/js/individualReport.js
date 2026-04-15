@@ -40,7 +40,10 @@ if (datosGuardados && datosGuardados[antipatronSeleccionado]) {
 
         // Get full name, or fallback to abbreviation if missing from the dictionary.
         const nombreCompleto = diccionarioSmells[smell.moha_smell] || smell.moha_smell;
-        const linkUrl = `https://sonarcloud.io/project/issues?issueStatuses=OPEN%2CCONFIRMED&id=${smell.project}&open=${smell.issue_key}`;
+        const isSonarSmell = (smell.source || "sonar") === "sonar" && !!smell.issue_key && !!smell.project;
+        const linkUrl = isSonarSmell
+            ? `https://sonarcloud.io/project/issues?issueStatuses=OPEN%2CCONFIRMED&id=${smell.project}&open=${smell.issue_key}`
+            : null;
 
         const textRange = smell.textRange || {};
         const startLine = textRange.startLine || smell.line;
@@ -52,6 +55,10 @@ if (datosGuardados && datosGuardados[antipatronSeleccionado]) {
             ? `<td>${smell.component || 'N/A'}</td>`
             : `<td><a href="${codeDetailsUrl}">${smell.component || 'N/A'}</a></td>`;
 
+        const sonarCell = linkUrl
+            ? `<td><a href="${linkUrl}" target="_blank">View</a></td>`
+            : `<td>-</td>`;
+
         // Insert cells (td) with the information.
         fila.innerHTML = `
                     <td>${nombreCompleto}</td>
@@ -59,7 +66,7 @@ if (datosGuardados && datosGuardados[antipatronSeleccionado]) {
                     <td>${smell.line || 'N/A'}</td>
                     <td>${smell.severity}</td>
                     ${componentCell}
-                    <td><a href="${linkUrl}" target="_blank">View</a></td>
+                    ${sonarCell}
                 `;
 
         // Add row to table body.

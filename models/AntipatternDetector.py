@@ -46,9 +46,11 @@ def DetectAntipattern(relatedSmellsMoha):
                 if re.fullmatch(regla, smell['moha_smell']):
                     detallePorSmell[antipatron].append({
                         'moha_smell': smell['moha_smell'],
-                        'sonar_rule': smell['sonar_rule'],
+                        'sonar_rule': smell.get('sonar_rule', 'N/A'),
+                        'metric_name': smell.get('metric_name'),
+                        'source': smell.get('source', 'sonar'),
                         'line': smell.get('line'),
-                        'severity': smell.get('severity'),
+                        'severity': smell.get('severity', 'MAJOR'),
                         'component': smell.get('component'),
                         'archivo_clase': _extraer_archivo_clase(smell.get('component')),
                         'issue_key': smell.get('issue_key'),

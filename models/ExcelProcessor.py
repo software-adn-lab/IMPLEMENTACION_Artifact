@@ -36,7 +36,8 @@ class ExcelProcessor:
                             'component': componente,
                             'issue_key': smell.get('issue_key'),
                             'project': smell.get('project'),
-                            'textRange': smell.get('textRange')
+                            'textRange': smell.get('textRange'),
+                            'source': 'sonar'
                         })
                         
                         # Registramos la combinacion para no volver a agregarla.
