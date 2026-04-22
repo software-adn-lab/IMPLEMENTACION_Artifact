@@ -148,7 +148,7 @@ A continuacion se describe el flujo interno de cada clase principal para entende
 1. controllers/main_controller.py
   - Entrada: project_key y token (opcional) desde la peticion HTTP.
   - Proceso:
-    - Invoca RepositoryStructureAnalyzer para clonar/ubicar el repositorio.
+    - Invoca RepositoryStructureAnalyzer para clonar/ubicar y analizar la estructura Python del repositorio.
     - Ejecuta PythonSonarEquivalentRules para obtener issues locales (reglas Sonar equivalentes y reglas NEW-*).
     - Ejecuta JSONReader + ExcelProcessor para obtener mapeo Sonar -> Moha.
     - Mapea issues locales con _map_local_rule_issue_to_moha.
@@ -158,8 +158,8 @@ A continuacion se describe el flujo interno de cada clase principal para entende
 
 2. models/RepositoryStructureAnalyzer.py
   - Entrada: project_key.
-  - Proceso: resuelve URL de repositorio y realiza clonado local (si aplica).
-  - Salida: ruta local del repositorio para analisis de codigo.
+  - Proceso: resuelve URL de repositorio, realiza clonado local (si aplica) y analiza archivos .py con AST.
+  - Salida: ruta local del repositorio y resumen de estructura Python.
 
 3. models/JSONReader.py
   - Entrada: project_key y token (opcional).

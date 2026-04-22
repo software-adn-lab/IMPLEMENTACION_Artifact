@@ -1,4 +1,6 @@
 import os
+import ast
+import os
 import shutil
 import stat
 import subprocess
@@ -8,7 +10,7 @@ from typing import Dict, List, Set, Tuple
 
 
 class RepositoryStructureAnalyzer:
-    """Clona un repositorio de GitHub e imprime una jerarquia AST basica de Java con metricas."""
+    """Clona un repositorio de GitHub y analiza su estructura Python con AST."""
 
     _tracked_repositories: Set[Path] = set()
 
@@ -17,12 +19,12 @@ class RepositoryStructureAnalyzer:
 
     def analyze_and_print(self, repository_input: str) -> None:
         """Punto de entrada usado por el controlador. No eleva excepciones esperadas de ejecucion."""
-        print("\n[RepositoryStructureAnalyzer] Starting repository structure analysis...")
+        print("\n[RepositoryStructureAnalyzer] Iniciando analisis de estructura del repositorio Python...")
 
         try:
             clone_url, repo_folder_name = self._normalize_repository_input(repository_input)
             repository_path = self._clone_or_update_repository(clone_url, repo_folder_name)
-            metrics = self._build_java_hierarchy_and_metrics(repository_path)
+            metrics = self._build_python_hierarchy_and_metrics(repository_path)
             self._print_summary(repository_path, metrics)
         except Exception as exc:
             print(f"[RepositoryStructureAnalyzer] Warning: {exc}")
@@ -96,6 +98,37 @@ class RepositoryStructureAnalyzer:
         if last_error is not None:
             raise last_error
 
+    @staticmethod
+    def _is_abstract_class(class_node: ast.ClassDef) -> bool:
+        """Detecta clases abstractas o interfaz-like en Python."""
+        for base in class_node.bases:
+            base_name = RepositoryStructureAnalyzer._get_base_name(base)
+            if base_name in {"ABC", "ABCMeta", "Protocol", "Interface"}:
+                return True
+
+        for decorator in class_node.decorator_list:
+            decorator_name = RepositoryStructureAnalyzer._get_base_name(decorator)
+            if decorator_name in {"abstract", "abstractclass", "dataclass"}:
+                continue
+
+        for member in class_node.body:
+            if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                if any(RepositoryStructureAnalyzer._get_base_name(dec) == "abstractmethod" for dec in member.decorator_list):
+                    return True
+
+        return False
+
+    @staticmethod
+    def _get_base_name(node: ast.AST) -> str:
+        """Obtiene el nombre simple de un nodo AST de referencia."""
+        if isinstance(node, ast.Name):
+            return node.id
+        if isinstance(node, ast.Attribute):
+            return node.attr
+        if isinstance(node, ast.Call):
+            return RepositoryStructureAnalyzer._get_base_name(node.func)
+        return ""
+
     def _normalize_repository_input(self, repository_input: str) -> Tuple[str, str]:
         """Acepta owner/repo, URL de GitHub o clave Sonar owner_repo y retorna URL de clonado y carpeta."""
         raw_value = (repository_input or "").strip()
@@ -158,87 +191,57 @@ class RepositoryStructureAnalyzer:
         self._tracked_repositories.add(target_path)
         return target_path
 
-    def _build_java_hierarchy_and_metrics(self, repository_path: Path) -> Dict:
-        try:
-            import javalang
-        except ImportError as import_error:
-            raise RuntimeError(
-                "The 'javalang' package is required for AST analysis. Install it with: pip install javalang"
-            ) from import_error
-
+    def _build_python_hierarchy_and_metrics(self, repository_path: Path) -> Dict:
         hierarchy: Dict[str, List[Dict]] = {}
         parse_errors: List[Dict] = []
 
-        total_java_files = 0
+        total_python_files = 0
         total_classes = 0
         total_methods = 0
-        total_constructors = 0
+        total_interfaces = 0
         total_lines = 0
 
-        for java_file in repository_path.rglob("*.java"):
+        for python_file in repository_path.rglob("*.py"):
             # Omite directorios ocultos o generados si existen.
-            if any(part.startswith(".") for part in java_file.parts):
+            if any(part.startswith(".") for part in python_file.parts):
                 continue
 
-            total_java_files += 1
-            relative_file = java_file.relative_to(repository_path).as_posix()
+            total_python_files += 1
+            relative_file = python_file.relative_to(repository_path).as_posix()
 
             try:
-                source_code = java_file.read_text(encoding="utf-8", errors="ignore")
+                source_code = python_file.read_text(encoding="utf-8", errors="ignore")
                 total_lines += len(source_code.splitlines())
 
-                compilation_unit = javalang.parse.parse(source_code)
-                package_name = compilation_unit.package.name if compilation_unit.package else "(default)"
+                module = ast.parse(source_code)
 
                 file_types = []
-                for _, class_node in compilation_unit.filter(javalang.tree.ClassDeclaration):
-                    methods = [method.name for method in class_node.methods]
-                    constructors = [ctor.name for ctor in class_node.constructors]
+                for class_node in [node for node in module.body if isinstance(node, ast.ClassDef)]:
+                    methods = [
+                        member.name
+                        for member in class_node.body
+                        if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef))
+                    ]
+                    is_interface_like = self._is_abstract_class(class_node)
 
                     total_classes += 1
                     total_methods += len(methods)
-                    total_constructors += len(constructors)
+                    if is_interface_like:
+                        total_interfaces += 1
 
                     file_types.append(
                         {
                             "kind": "class",
                             "name": class_node.name,
+                            "bases": [self._get_base_name(base) for base in class_node.bases],
                             "methods": methods,
-                            "constructors": constructors,
-                        }
-                    )
-
-                for _, interface_node in compilation_unit.filter(javalang.tree.InterfaceDeclaration):
-                    methods = [method.name for method in interface_node.methods]
-                    total_classes += 1
-                    total_methods += len(methods)
-
-                    file_types.append(
-                        {
-                            "kind": "interface",
-                            "name": interface_node.name,
-                            "methods": methods,
-                            "constructors": [],
-                        }
-                    )
-
-                for _, enum_node in compilation_unit.filter(javalang.tree.EnumDeclaration):
-                    methods = [method.name for method in enum_node.methods]
-                    total_classes += 1
-                    total_methods += len(methods)
-
-                    file_types.append(
-                        {
-                            "kind": "enum",
-                            "name": enum_node.name,
-                            "methods": methods,
-                            "constructors": [],
+                            "interface_like": is_interface_like,
                         }
                     )
 
                 hierarchy[relative_file] = [
                     {
-                        "package": package_name,
+                        "module": relative_file.replace("/", ".").rsplit(".", 1)[0],
                         "types": file_types,
                     }
                 ]
@@ -248,23 +251,23 @@ class RepositoryStructureAnalyzer:
 
         return {
             "repository": repository_path.as_posix(),
-            "java_files": total_java_files,
+            "python_files": total_python_files,
             "classes": total_classes,
+            "interface_like_classes": total_interfaces,
             "methods": total_methods,
-            "constructors": total_constructors,
             "lines": total_lines,
             "hierarchy": hierarchy,
             "parse_errors": parse_errors,
         }
 
     def _print_summary(self, repository_path: Path, metrics: Dict) -> None:
-        print("\n[RepositoryStructureAnalyzer] AST hierarchy and metrics")
+        print("\n[RepositoryStructureAnalyzer] Jerarquia AST y metricas de Python")
         print(f"Repository path: {repository_path}")
-        print(f"Java files: {metrics['java_files']}")
-        print(f"Classes/Interfaces/Enums: {metrics['classes']}")
+        print(f"Python files: {metrics['python_files']}")
+        print(f"Classes: {metrics['classes']}")
+        print(f"Interface-like classes: {metrics['interface_like_classes']}")
         print(f"Methods: {metrics['methods']}")
-        print(f"Constructors: {metrics['constructors']}")
-        print(f"Total lines (Java files): {metrics['lines']}")
+        print(f"Total lines (Python files): {metrics['lines']}")
 
         if metrics["parse_errors"]:
             print(f"Files with parse errors: {len(metrics['parse_errors'])}")
@@ -273,13 +276,14 @@ class RepositoryStructureAnalyzer:
         for relative_file, entries in metrics["hierarchy"].items():
             print(f"- File: {relative_file}")
             for entry in entries:
-                print(f"  - Package: {entry['package']}")
+                print(f"  - Module: {entry['module']}")
                 for type_info in entry["types"]:
-                    print(f"    - {type_info['kind'].capitalize()}: {type_info['name']}")
-                    if type_info["constructors"]:
-                        print("      - Constructors:")
-                        for constructor_name in type_info["constructors"]:
-                            print(f"        - {constructor_name}")
+                    kind_label = "Interface-like class" if type_info.get("interface_like") else "Class"
+                    print(f"    - {kind_label}: {type_info['name']}")
+                    if type_info.get("bases"):
+                        print("      - Bases:")
+                        for base_name in type_info["bases"]:
+                            print(f"        - {base_name}")
                     if type_info["methods"]:
                         print("      - Methods:")
                         for method_name in type_info["methods"]:
