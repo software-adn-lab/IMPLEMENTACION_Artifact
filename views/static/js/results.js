@@ -32,6 +32,9 @@ function construirTarjetaGrafico(nombre, grafico) {
   }
 
   const redireccion = () => {
+    if (typeof window.__markInternalNavigationForCleanup === "function") {
+      window.__markInternalNavigationForCleanup();
+    }
     window.location.href = `/individual-report?patron=${encodeURIComponent(nombre)}`;
   };
 

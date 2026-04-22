@@ -76,6 +76,6 @@ class JSONReader:
                 'project': issue.get('project'),
                 'textRange': issue.get('textRange')
             })
-            # print (issue.get('rule'), issue.get('line'), issue.get('severity'), issue.get('component'))
+            # print(issue.get('rule'), issue.get('line'), issue.get('severity'), issue.get('component'))
 
         return codeSmellsSonarQube

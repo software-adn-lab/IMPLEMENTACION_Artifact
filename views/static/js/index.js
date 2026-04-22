@@ -79,6 +79,9 @@ form.addEventListener("submit", async function (event) {
             sessionStorage.setItem("isRepoPrivate", isPrivate);
             // Redirect to the results page
             setTimeout(() => {
+                if (typeof window.__markInternalNavigationForCleanup === "function") {
+                    window.__markInternalNavigationForCleanup();
+                }
                 window.location.href = "/general-report";
             }, 500);
         }

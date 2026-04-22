@@ -1,17 +1,22 @@
+import os
 import shutil
+import stat
 import subprocess
+import time
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Set, Tuple
 
 
 class RepositoryStructureAnalyzer:
-    """Clone a GitHub repository and print a basic Java AST hierarchy with metrics."""
+    """Clona un repositorio de GitHub e imprime una jerarquia AST basica de Java con metricas."""
+
+    _tracked_repositories: Set[Path] = set()
 
     def __init__(self, clone_root: str = "cloned_repositories"):
         self.clone_root = Path(clone_root)
 
     def analyze_and_print(self, repository_input: str) -> None:
-        """Entry point used by the controller. Never raises for expected runtime issues."""
+        """Punto de entrada usado por el controlador. No eleva excepciones esperadas de ejecucion."""
         print("\n[RepositoryStructureAnalyzer] Starting repository structure analysis...")
 
         try:
@@ -23,12 +28,76 @@ class RepositoryStructureAnalyzer:
             print(f"[RepositoryStructureAnalyzer] Warning: {exc}")
 
     def clone_repository(self, repository_input: str) -> Path:
-        """Clone or update repository from GUI input and return its local path."""
+        """Clona o actualiza repositorio desde la GUI y retorna su ruta local."""
         clone_url, repo_folder_name = self._normalize_repository_input(repository_input)
         return self._clone_or_update_repository(clone_url, repo_folder_name)
 
+    def delete_repository(self, repository_input: str) -> bool:
+        """Elimina el repositorio clonado localmente para el identificador recibido.
+
+        Retorna True si se elimino una carpeta existente, False si no existia.
+        """
+        _, repo_folder_name = self._normalize_repository_input(repository_input)
+        target_path = (self.clone_root / repo_folder_name).resolve()
+        if not target_path.exists():
+            return False
+
+        self._safe_rmtree(target_path)
+        self._tracked_repositories.discard(target_path)
+        return True
+
+    @classmethod
+    def cleanup_tracked_repositories(cls) -> Dict:
+        """Elimina solo los repositorios usados en la sesion actual del servidor."""
+        removed = []
+        not_found = []
+        failed = []
+
+        for repo_path in list(cls._tracked_repositories):
+            if not repo_path.exists():
+                not_found.append(str(repo_path))
+                cls._tracked_repositories.discard(repo_path)
+                continue
+
+            try:
+                cls._safe_rmtree(repo_path)
+                removed.append(str(repo_path))
+                cls._tracked_repositories.discard(repo_path)
+            except Exception as cleanup_error:
+                failed.append({
+                    "path": str(repo_path),
+                    "error": str(cleanup_error),
+                })
+
+        return {
+            "removed": removed,
+            "not_found": not_found,
+            "failed": failed,
+        }
+
+    @staticmethod
+    def _safe_rmtree(target_path: Path) -> None:
+        """Elimina directorios de forma robusta para Windows/OneDrive."""
+
+        def _on_rm_error(func, path, _exc_info):
+            os.chmod(path, stat.S_IWRITE)
+            func(path)
+
+        last_error = None
+        for _ in range(3):
+            try:
+                shutil.rmtree(target_path, onerror=_on_rm_error)
+                last_error = None
+                break
+            except Exception as cleanup_error:
+                last_error = cleanup_error
+                time.sleep(0.3)
+
+        if last_error is not None:
+            raise last_error
+
     def _normalize_repository_input(self, repository_input: str) -> Tuple[str, str]:
-        """Accepts owner/repo, GitHub URL, or Sonar key owner_repo and returns clone URL and folder name."""
+        """Acepta owner/repo, URL de GitHub o clave Sonar owner_repo y retorna URL de clonado y carpeta."""
         raw_value = (repository_input or "").strip()
         if not raw_value:
             raise ValueError("Repository name is empty.")
@@ -65,7 +134,7 @@ class RepositoryStructureAnalyzer:
             raise RuntimeError("Git is not installed or not available in PATH.")
 
         self.clone_root.mkdir(parents=True, exist_ok=True)
-        target_path = self.clone_root / repo_folder_name
+        target_path = (self.clone_root / repo_folder_name).resolve()
 
         if target_path.exists():
             print(f"[RepositoryStructureAnalyzer] Repository already exists. Updating: {target_path}")
@@ -86,6 +155,7 @@ class RepositoryStructureAnalyzer:
             if clone_result.returncode != 0:
                 raise RuntimeError(clone_result.stderr.strip() or "Could not clone repository.")
 
+        self._tracked_repositories.add(target_path)
         return target_path
 
     def _build_java_hierarchy_and_metrics(self, repository_path: Path) -> Dict:
@@ -106,7 +176,7 @@ class RepositoryStructureAnalyzer:
         total_lines = 0
 
         for java_file in repository_path.rglob("*.java"):
-            # Skip hidden or generated directories if present.
+            # Omite directorios ocultos o generados si existen.
             if any(part.startswith(".") for part in java_file.parts):
                 continue
 
