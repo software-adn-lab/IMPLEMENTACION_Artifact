@@ -8,7 +8,6 @@ import time
 from pathlib import Path
 from typing import Dict, List, Set, Tuple
 
-
 class RepositoryStructureAnalyzer:
     """Clona un repositorio de GitHub y analiza su estructura Python con AST."""
 
