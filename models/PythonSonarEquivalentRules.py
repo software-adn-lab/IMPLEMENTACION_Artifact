@@ -6,7 +6,7 @@ from typing import Dict, List, Tuple
 from .python_rules import (
     NewDitOneRule,
     NewNaccVeryHighRule,
-    NewNinterfVeryHighRule,
+    # NewNinterfVeryHighRule,  # COMMENTED: empty file
     NewNmdVeryLowRule,
     NewNmnoparamVeryHighRule,
     NewNoPolymorphismRule,
@@ -78,7 +78,7 @@ class PythonSonarEquivalentRules:
 
         # [NUEVO] Reglas de metricas adicionales solicitadas.
         self.rule_new_nacc = NewNaccVeryHighRule()
-        self.rule_new_ninterf = NewNinterfVeryHighRule()
+        # self.rule_new_ninterf = NewNinterfVeryHighRule()  # COMMENTED: empty file
         self.rule_new_nprivfield = NewNprivfieldHighRule()
         self.rule_new_nmd_low = NewNmdVeryLowRule()
         self.rule_new_no_polymorphism = NewNoPolymorphismRule()
@@ -167,7 +167,7 @@ class PythonSonarEquivalentRules:
             rule_s1444=self.rule_s1444,
             rule_s1448=self.rule_s1448,
             rule_new_nacc=self.rule_new_nacc,
-            rule_new_ninterf=self.rule_new_ninterf,
+            # rule_new_ninterf=self.rule_new_ninterf,  # COMMENTED: empty file
             rule_new_nprivfield=self.rule_new_nprivfield,
             rule_new_nmd_low=self.rule_new_nmd_low,
             rule_new_no_polymorphism=self.rule_new_no_polymorphism,
@@ -196,7 +196,7 @@ class _RulesVisitor(ast.NodeVisitor):
         rule_s1444: S1444ClassAttributeFinalRule,
         rule_s1448: S1448TooManyMethodsRule,
         rule_new_nacc: NewNaccVeryHighRule,
-        rule_new_ninterf: NewNinterfVeryHighRule,
+        # rule_new_ninterf: NewNinterfVeryHighRule,  # COMMENTED: empty file
         rule_new_nprivfield: NewNprivfieldHighRule,
         rule_new_nmd_low: NewNmdVeryLowRule,
         rule_new_no_polymorphism: NewNoPolymorphismRule,
@@ -212,7 +212,7 @@ class _RulesVisitor(ast.NodeVisitor):
         self.rule_s1444 = rule_s1444
         self.rule_s1448 = rule_s1448
         self.rule_new_nacc = rule_new_nacc
-        self.rule_new_ninterf = rule_new_ninterf
+        # self.rule_new_ninterf = rule_new_ninterf  # COMMENTED: empty file
         self.rule_new_nprivfield = rule_new_nprivfield
         self.rule_new_nmd_low = rule_new_nmd_low
         self.rule_new_no_polymorphism = rule_new_no_polymorphism
@@ -231,7 +231,7 @@ class _RulesVisitor(ast.NodeVisitor):
         self.issues.extend(self.rule_s101.check_class(node, self.file_path))
         self.issues.extend(self.rule_py_lx01.check_class(node, self.file_path))
         self.issues.extend(self.rule_new_nacc.check_class(node, self.file_path))
-        self.issues.extend(self.rule_new_ninterf.check_class(node, self.file_path))
+        # self.issues.extend(self.rule_new_ninterf.check_class(node, self.file_path))  # COMMENTED: empty file
         self.issues.extend(self.rule_new_nprivfield.check_class(node, self.file_path))
         self.issues.extend(self.rule_new_nmd_low.check_class(node, self.file_path))
         self.issues.extend(self.rule_new_no_polymorphism.check_class(node, self.file_path))
