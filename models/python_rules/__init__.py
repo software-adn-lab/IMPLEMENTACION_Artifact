@@ -1,7 +1,7 @@
 from .rule_issue import RuleIssue
 from .new_dit_one_rule import NewDitOneRule
 from .new_nacc_very_high_rule import NewNaccVeryHighRule
-# from .new_ninterf_very_high_rule import NewNinterfVeryHighRule  # COMMENTED: empty file
+from .new_ninterf_very_high_rule import NewNinterfVeryHighRule
 from .new_nmd_very_low_rule import NewNmdVeryLowRule
 from .new_nmnoparam_very_high_rule import NewNmnoparamVeryHighRule
 from .new_no_polymorphism_rule import NewNoPolymorphismRule

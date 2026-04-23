@@ -5,15 +5,31 @@ from .rule_issue import RuleIssue
 
 
 class NewNaccVeryHighRule:
-    # [NUEVO] NACC VERY_HIGH: interfaz publica muy grande.
-    # Ajusta public_access_threshold para subir/bajar sensibilidad.
-    def __init__(self, public_access_threshold: int = 12):
-        self.public_access_threshold = public_access_threshold
+    # [ACTUALIZACION 2026-04-23]
+    # Se ajusto la regla para alinearla con Lanza & Marinescu + DECOR/Moha:
+    # 1) NACC (NOAM) significativo: al menos 5 accesores.
+    # 2) WOC bajo: >= 66% de metodos accesores sobre el total de metodos.
+    # Nota: el componente estadistico por percentiles (Q3/P80/P90) se deja para
+    # una fase de agregacion global del repositorio.
+    def __init__(self, min_accessor_methods: int = 5, min_accessor_ratio: float = 0.66):
+        self.min_accessor_methods = min_accessor_methods
+        self.min_accessor_ratio = min_accessor_ratio
 
     def check_class(self, node: ast.ClassDef, file_path: str) -> List[RuleIssue]:
-        public_members = self._collect_public_members(node)
-        nacc = len(public_members)
-        if nacc < self.public_access_threshold:
+        methods = [
+            m
+            for m in node.body
+            if isinstance(m, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and not (m.name.startswith("__") and m.name.endswith("__"))
+        ]
+        if not methods:
+            return []
+
+        accessor_methods = [m for m in methods if self._is_accessor_like(m)]
+        accessor_count = len(accessor_methods)
+        accessor_ratio = accessor_count / len(methods)
+
+        if accessor_count < self.min_accessor_methods or accessor_ratio < self.min_accessor_ratio:
             return []
 
         return [
@@ -22,8 +38,10 @@ class NewNaccVeryHighRule:
                 file_path=file_path,
                 line=node.lineno,
                 message=(
-                    f"Class '{node.name}' exposes {nacc} public members, "
-                    f"which is above the threshold {self.public_access_threshold}."
+                    f"Class '{node.name}' has NACC/NOAM={accessor_count} accessor methods "
+                    f"over {len(methods)} declared methods "
+                    f"(ratio={accessor_ratio:.2f}), meeting thresholds "
+                    f"NACC>={self.min_accessor_methods} and accessor_ratio>={self.min_accessor_ratio:.2f}."
                 ),
                 symbol_name=node.name,
                 metric_name="NACC VERY_HIGH",
@@ -33,6 +51,30 @@ class NewNaccVeryHighRule:
                 },
             )
         ]
+
+    def _is_accessor_like(self, method: ast.AST) -> bool:
+        if not isinstance(method, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            return False
+
+        lower_name = method.name.lower()
+        if lower_name.startswith(("get_", "set_", "is_", "has_")):
+            return True
+
+        body = getattr(method, "body", [])
+        if len(body) == 1 and isinstance(body[0], ast.Return):
+            value = body[0].value
+            if isinstance(value, ast.Attribute) and isinstance(value.value, ast.Name):
+                return value.value.id in {"self", "cls"}
+
+        # Setter minimo: asigna a self.<attr> y no tiene mas logica.
+        if len(body) == 1 and isinstance(body[0], ast.Assign):
+            assign = body[0]
+            if len(assign.targets) == 1 and isinstance(assign.targets[0], ast.Attribute):
+                target = assign.targets[0]
+                if isinstance(target.value, ast.Name) and target.value.id == "self":
+                    return True
+
+        return False
 
     def _collect_public_members(self, node: ast.ClassDef) -> Set[str]:
         members: Set[str] = set()

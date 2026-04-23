@@ -6,6 +6,23 @@ Esta herramienta es una aplicacion web que analiza proyectos de SonarCloud, iden
 
 El sistema entrega una visualizacion clara y detallada de resultados para apoyar la mejora continua de la calidad de codigo.
 
+## 1.1 Reestructuracion No Destructiva del Proyecto
+
+Se realizo una reestructuracion por carpetas sin eliminar archivos existentes.
+
+Nuevas carpetas:
+
+- docs/: documentacion tecnica y manuales.
+- docs/architecture/: espacio para artefactos de arquitectura.
+- tests/: suite de pruebas automatizadas.
+- tests/unit/: pruebas unitarias por modulo.
+- tests/fixtures/: datos de prueba reutilizables.
+
+Manual de desarrollador:
+
+- docs/manual_desarrollador.md
+- docs/guia_pruebas.md
+
 ## 2. Caracteristicas Principales
 
 - Integracion con SonarCloud: consume la API de SonarCloud para obtener Code Smells de un proyecto especifico.
@@ -56,6 +73,25 @@ Antes de ejecutar la aplicacion, asegurate de contar con:
   ```text
   http://127.0.0.1:5000
   ```
+
+### 4.1 Ejecutar Pruebas Unitarias
+
+Desde la raiz del proyecto:
+
+```bash
+python -m unittest discover -s tests -p "test_*.py" -v
+```
+
+Resultado esperado actual: 23 pruebas en estado OK.
+
+Suite incluida en esta version:
+
+- tests/unit/test_antipattern_detector.py
+- tests/unit/test_main_controller_mapping.py
+- tests/unit/test_python_rules_new.py
+- tests/unit/test_python_sonar_equivalent_rules.py
+- tests/unit/test_json_reader.py
+- tests/unit/test_excel_processor.py
 
 ## 5. Guia de Uso
 

@@ -5,9 +5,10 @@ from .rule_issue import RuleIssue
 
 
 class NewNmdVeryLowRule:
-    # [NUEVO] NMD VERY_LOW: muy pocos metodos declarados.
-    # Ajusta min_methods_threshold para controlar sensibilidad.
-    def __init__(self, min_methods_threshold: int = 1, ignore_dunder: bool = True):
+    # [ACTUALIZACION 2026-04-23]
+    # Se ajusta VERY_LOW a <= 3 metodos (Lanza & Marinescu: NOM < 3 es sospechoso).
+    # Con esto se capturan clases con comportamiento pobre, no solo casos extremos <=1.
+    def __init__(self, min_methods_threshold: int = 3, ignore_dunder: bool = True):
         self.min_methods_threshold = min_methods_threshold
         self.ignore_dunder = ignore_dunder
 

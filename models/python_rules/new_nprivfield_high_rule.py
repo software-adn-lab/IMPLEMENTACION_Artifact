@@ -5,9 +5,11 @@ from .rule_issue import RuleIssue
 
 
 class NewNprivfieldHighRule:
-    # [NUEVO] NPRIVFIELD HIGH: muchas variables privadas/protegidas.
-    # Ajusta private_field_threshold para controlar sensibilidad.
-    def __init__(self, private_field_threshold: int = 6):
+    # [ACTUALIZACION 2026-04-23]
+    # Se sube el umbral heuristico para HIGH a 8 campos privados/protegidos
+    # (alineado con Lanza & Marinescu: MANY ~ 8-10).
+    # El enfoque estadistico por Q3/IQR queda como extension futura global.
+    def __init__(self, private_field_threshold: int = 8):
         self.private_field_threshold = private_field_threshold
 
     def check_class(self, node: ast.ClassDef, file_path: str) -> List[RuleIssue]:
