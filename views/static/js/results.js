@@ -1,4 +1,3 @@
-
 function obtenerClaseColor(condicionesCumplidas, condicionesTotales) {
   if (condicionesCumplidas === condicionesTotales) {
     return "circulo-rojo";
@@ -396,10 +395,14 @@ function construirWrapperPdf(projectName, language) {
 // exportContainerPdf: generate and download the PDF automatically using html2pdf.
 async function exportContainerPdf(projectName, language) {
   var element = document.getElementById('contenedorGeneralGraficos');
-  var antipatternData = sessionStorage.getItem('antipatternResult');
-  if (!element) {
-    alert('There is no content to export.');
+  if (!element || !element.children.length) {
+    alert('There is no content to export. Please ensure the graphs are loaded.');
     return;
+  }
+
+  var antipatternData = sessionStorage.getItem('antipatternResult');
+  if (!antipatternData) {
+    console.warn('No antipattern data found in sessionStorage. The PDF may be incomplete.');
   }
 
   var now = new Date();
@@ -426,10 +429,12 @@ async function exportContainerPdf(projectName, language) {
     var datosTrazabilidad = antipatternData ? JSON.parse(antipatternData) : {};
     var contenidoPreparado = await prepararContenedorParaPdf(element);
     wrapper.appendChild(contenidoPreparado);
+
     const trazabilidad = construirTrazabilidadPdfElemento(datosTrazabilidad);
     if (trazabilidad) {
       wrapper.appendChild(trazabilidad);
     }
+
     await html2pdf().set(opt).from(wrapper).save();
   } catch (err) {
     console.error('Error generating PDF:', err);
