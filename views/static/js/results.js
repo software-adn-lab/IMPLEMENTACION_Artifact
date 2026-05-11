@@ -256,9 +256,18 @@ function construirResumenDeteccionArchivos(datos) {
 }
 
 function construirTrazabilidadPdfElemento(datos) {
-  const filas = Object.entries(datos).flatMap(([antipatron, resultado]) => {
-    const detalles = Array.isArray(resultado.detalle_smells)
-      ? resultado.detalle_smells.filter(smell => smell && smell.moha_smell)
+  const filas = extraerFilasTrazabilidad(datos);
+  if (!filas.length) {
+    return construirTrazabilidadPdfElementoDesdeFilas([], datos, true);
+  }
+
+  return construirTrazabilidadPdfElementoDesdeFilas(filas, datos, true);
+}
+
+function extraerFilasTrazabilidad(datos) {
+  return Object.entries(datos).flatMap(([antipatron, resultado]) => {
+    const detalles = Array.isArray(resultado?.detalle_smells)
+      ? resultado.detalle_smells.filter((smell) => smell && smell.moha_smell)
       : [];
 
     return detalles.map((smell) => ({
@@ -272,17 +281,21 @@ function construirTrazabilidadPdfElemento(datos) {
       issue_key: smell.issue_key
     }));
   });
+}
 
-  if (!filas.length) {
+function construirTrazabilidadPdfElementoDesdeFilas(filas, datosOriginales, incluirResumen) {
+  if (!Array.isArray(filas) || filas.length === 0) {
     const sectionVacia = clonarTemplate("pdf-traceability-empty-template");
     if (!(sectionVacia instanceof HTMLElement)) {
       return null;
     }
 
-    const titulo = sectionVacia.querySelector("h2");
-    const resumen = construirResumenDeteccionArchivos(datos);
-    if (titulo instanceof HTMLElement) {
-      titulo.insertAdjacentElement("afterend", resumen);
+    if (incluirResumen) {
+      const titulo = sectionVacia.querySelector("h2");
+      const resumen = construirResumenDeteccionArchivos(datosOriginales || {});
+      if (titulo instanceof HTMLElement) {
+        titulo.insertAdjacentElement("afterend", resumen);
+      }
     }
 
     return sectionVacia;
@@ -298,10 +311,12 @@ function construirTrazabilidadPdfElemento(datos) {
     return section;
   }
 
-  const titulo = section.querySelector("h2");
-  const resumen = construirResumenDeteccionArchivos(datos);
-  if (titulo instanceof HTMLElement) {
-    titulo.insertAdjacentElement("afterend", resumen);
+  if (incluirResumen) {
+    const titulo = section.querySelector("h2");
+    const resumen = construirResumenDeteccionArchivos(datosOriginales || {});
+    if (titulo instanceof HTMLElement) {
+      titulo.insertAdjacentElement("afterend", resumen);
+    }
   }
 
   // Add header for the new column in the cloned template.
@@ -315,32 +330,28 @@ function construirTrazabilidadPdfElemento(datos) {
 
   filas.forEach((fila) => {
     const row = document.createElement("tr");
-    
-    // Regular text fields
+
     const campos = [fila.antipatron, fila.mohaSmell, fila.sonarRule, fila.line, fila.severity, fila.component];
-    
     campos.forEach((valor, index) => {
       const td = document.createElement("td");
       td.textContent = valor;
-      td.style.fontSize = "10px"; // Reduce font to avoid PDF overflow.
+      td.style.fontSize = "10px";
 
-      // For component column (index 5), force wrapping to avoid overlap.
       if (index === 5) {
         td.style.wordBreak = "break-all";
-        td.style.maxWidth = "150px"; 
+        td.style.maxWidth = "150px";
       }
 
       row.appendChild(td);
     });
 
-    // Link field
     const tdLink = document.createElement("td");
     if (fila.project && fila.issue_key) {
       const link = document.createElement("a");
       link.href = `https://sonarcloud.io/project/issues?issueStatuses=OPEN%2CCONFIRMED&id=${fila.project}&open=${fila.issue_key}`;
       link.textContent = "View";
       link.target = "_blank";
-      link.style.color = "#0000EE"; 
+      link.style.color = "#0000EE";
       tdLink.appendChild(link);
     }
     tdLink.style.fontSize = "10px";
@@ -350,6 +361,14 @@ function construirTrazabilidadPdfElemento(datos) {
   });
 
   return section;
+}
+
+function obtenerWorkerHtml2pdf() {
+  if (typeof window.html2pdf !== "function") {
+    return null;
+  }
+  const worker = window.html2pdf();
+  return worker && typeof worker.from === "function" ? worker : null;
 }
 
 function cargarGraficosDesdeSession() {
@@ -394,51 +413,156 @@ function construirWrapperPdf(projectName, language) {
 
 // exportContainerPdf: generate and download the PDF automatically using html2pdf.
 async function exportContainerPdf(projectName, language) {
-  var element = document.getElementById('contenedorGeneralGraficos');
+  const element = document.getElementById("contenedorGeneralGraficos");
   if (!element || !element.children.length) {
-    alert('There is no content to export. Please ensure the graphs are loaded.');
+    alert("There is no content to export. Please ensure the graphs are loaded.");
     return;
   }
 
-  var antipatternData = sessionStorage.getItem('antipatternResult');
-  if (!antipatternData) {
-    console.warn('No antipattern data found in sessionStorage. The PDF may be incomplete.');
-  }
-
-  var now = new Date();
-  var dateStr = now.toISOString().slice(0,10).replace(/-/g,'');
-  var safeName = (projectName || 'project').replace(/\s+/g, '_').replace(/[^\w\-]/g,'');
-  var filename = `Report_${safeName}_${dateStr}.pdf`;
-
-  var opt = {
-    margin: 0.3,
-    filename: filename,
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
-    jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
-    pagebreak: { mode: ['css', 'legacy'] }
-  };
-
-  var wrapper = construirWrapperPdf(projectName, language);
-  if (!(wrapper instanceof HTMLElement)) {
-    alert('Could not build the PDF template.');
+  const workerCheck = obtenerWorkerHtml2pdf();
+  if (!workerCheck) {
+    alert("html2pdf is not available. Ensure the html2pdf script is loaded.");
     return;
   }
+
+  let datosTrazabilidad = {};
+  const antipatternData = sessionStorage.getItem("antipatternResult");
+  if (antipatternData) {
+    try {
+      datosTrazabilidad = JSON.parse(antipatternData);
+    } catch (e) {
+      console.error("Could not parse antipatternResult:", e);
+      datosTrazabilidad = {};
+    }
+  }
+  const filasTrazabilidad = extraerFilasTrazabilidad(datosTrazabilidad);
+
+  const now = new Date();
+  const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
+  const safeName = (projectName || "project").replace(/\s+/g, "_").replace(/[^\w\-]/g, "");
+  const filename = `Report_${safeName}_${dateStr}.pdf`;
+
+  // Mount off-screen to ensure styles/layout are computed.
+  const mount = document.createElement("div");
+  mount.style.position = "fixed";
+  mount.style.left = "-10000px";
+  mount.style.top = "0";
+  mount.style.width = "794px"; // ~A4 at 96dpi
+  mount.style.background = "#ffffff";
+  mount.style.zIndex = "-1";
+  document.body.appendChild(mount);
+
+  const margin = 24;
 
   try {
-    var datosTrazabilidad = antipatternData ? JSON.parse(antipatternData) : {};
-    var contenidoPreparado = await prepararContenedorParaPdf(element);
-    wrapper.appendChild(contenidoPreparado);
+    // Build static first-page content (header/legend + charts grid).
+    const charts = await prepararContenedorParaPdf(element);
 
-    const trazabilidad = construirTrazabilidadPdfElemento(datosTrazabilidad);
-    if (trazabilidad) {
-      wrapper.appendChild(trazabilidad);
+    // If there are many rows, render in chunks to avoid a single giant canvas.
+    const rowsPerPage = 28;
+    const totalChunks = Math.max(1, Math.ceil((filasTrazabilidad.length || 0) / rowsPerPage));
+
+    let pdf = null;
+    const addCanvasToPdf = (canvas) => {
+      if (!pdf) {
+        throw new Error("PDF is not initialized.");
+      }
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const usableWidth = pageWidth - margin * 2;
+      const usableHeight = pageHeight - margin * 2;
+
+      const imgData = canvas.toDataURL("image/jpeg", 0.92);
+      let imgWidth = usableWidth;
+      let imgHeight = (canvas.height * imgWidth) / canvas.width;
+      if (imgHeight > usableHeight) {
+        const scale = usableHeight / imgHeight;
+        imgHeight = usableHeight;
+        imgWidth = imgWidth * scale;
+      }
+
+      pdf.addPage();
+      const x = margin + (usableWidth - imgWidth) / 2;
+      const y = margin;
+      pdf.addImage(imgData, "JPEG", x, y, imgWidth, imgHeight);
+    };
+
+    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+      mount.replaceChildren();
+
+      const wrapper = construirWrapperPdf(projectName, language);
+      if (!(wrapper instanceof HTMLElement)) {
+        throw new Error("Could not build the PDF template.");
+      }
+
+      // For chunks after the first, remove the header/legend to keep pages lighter.
+      if (chunkIndex > 0) {
+        wrapper.querySelector(".pdf-export-header")?.remove();
+        wrapper.querySelector(".pdf-legend")?.remove();
+      }
+
+      // Only include charts on the first chunk to reduce canvas size.
+      if (chunkIndex === 0) {
+        wrapper.appendChild(charts);
+      }
+
+      const start = chunkIndex * rowsPerPage;
+      const end = start + rowsPerPage;
+      const filasChunk = filasTrazabilidad.slice(start, end);
+
+      const trazabilidad = construirTrazabilidadPdfElementoDesdeFilas(
+        filasChunk,
+        datosTrazabilidad,
+        chunkIndex === 0
+      );
+      if (trazabilidad) {
+        wrapper.appendChild(trazabilidad);
+      }
+
+      mount.appendChild(wrapper);
+
+      // Let the browser flush layout before capture.
+      await new Promise((r) => requestAnimationFrame(() => r()));
+
+      if (chunkIndex === 0) {
+        // Initialize PDF using html2pdf's internal jsPDF instance.
+        // Using a small-ish first chunk avoids the giant-canvas blank PDF issue.
+        pdf = await window
+          .html2pdf()
+          .set({
+            margin,
+            html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
+            jsPDF: { unit: "pt", format: "a4", orientation: "portrait" },
+            pagebreak: { mode: ["css", "legacy"] }
+          })
+          .from(wrapper)
+          .toPdf()
+          .get("pdf");
+      } else {
+        const canvas = await window
+          .html2pdf()
+          .set({
+            html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
+            pagebreak: { mode: ["css", "legacy"] }
+          })
+          .from(wrapper)
+          .toCanvas()
+          .get("canvas");
+
+        addCanvasToPdf(canvas);
+      }
     }
 
-    await html2pdf().set(opt).from(wrapper).save();
+    if (!pdf) {
+      throw new Error("PDF could not be created.");
+    }
+    pdf.save(filename);
   } catch (err) {
-    console.error('Error generating PDF:', err);
-    alert('Error generating the PDF. Check the browser console for details.');
+    console.error("Error generating PDF:", err);
+    alert("Error generating the PDF. Check the browser console for details.");
+  } finally {
+    mount.remove();
   }
 }
 
