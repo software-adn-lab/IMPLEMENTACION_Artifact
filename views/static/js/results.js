@@ -452,15 +452,31 @@ async function exportContainerPdf(projectName, language) {
   mount.style.zIndex = "-1";
   document.body.appendChild(mount);
 
-  const margin = 24;
+  const margin = 18;
 
   try {
     // Build static first-page content (header/legend + charts grid).
     const charts = await prepararContenedorParaPdf(element);
 
     // If there are many rows, render in chunks to avoid a single giant canvas.
-    const rowsPerPage = 28;
-    const totalChunks = Math.max(1, Math.ceil((filasTrazabilidad.length || 0) / rowsPerPage));
+    // First page includes charts, so keep it lighter; subsequent pages can fit more rows.
+    const rowsPerPageFirst = 18;
+    const rowsPerPageNext = 38;
+    const pageChunks = (() => {
+      const filas = Array.isArray(filasTrazabilidad) ? filasTrazabilidad : [];
+      if (!filas.length) {
+        return [[]];
+      }
+
+      const chunks = [];
+      chunks.push(filas.slice(0, rowsPerPageFirst));
+      for (let i = rowsPerPageFirst; i < filas.length; i += rowsPerPageNext) {
+        chunks.push(filas.slice(i, i + rowsPerPageNext));
+      }
+      return chunks;
+    })();
+
+    const totalChunks = Math.max(1, pageChunks.length);
 
     let pdf = null;
     const addCanvasToPdf = (canvas) => {
@@ -507,9 +523,7 @@ async function exportContainerPdf(projectName, language) {
         wrapper.appendChild(charts);
       }
 
-      const start = chunkIndex * rowsPerPage;
-      const end = start + rowsPerPage;
-      const filasChunk = filasTrazabilidad.slice(start, end);
+      const filasChunk = pageChunks[chunkIndex] || [];
 
       const trazabilidad = construirTrazabilidadPdfElementoDesdeFilas(
         filasChunk,
